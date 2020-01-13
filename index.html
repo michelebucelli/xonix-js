@@ -1,0 +1,46 @@
+<!DOCTYPE HTML>
+
+<html>
+    <head>
+        <title>xonix-js</title>
+        <script src="script.js"></script>
+
+        <style>
+            body { background-color: black; }
+
+            #wrapper {
+                width: 800px;
+                height: 540px;
+                position: absolute;
+                margin: auto;
+                top: 0;
+                bottom: 0;
+                left: 0;
+                right: 0;
+            }
+
+            #status-canvas-1 {
+                position: absolute;
+                top: 0;
+            }
+
+            #main-canvas {
+                position: absolute;
+                top: 30px;
+            }
+
+            #status-canvas-2 {
+                position: absolute;
+                bottom: 0;
+            }
+        </style>
+    </head>
+
+    <body onload="setup()">
+        <div id="wrapper">
+            <canvas id="status-canvas-1" width="800" height="25"></canvas>
+            <canvas id="main-canvas" width="800" height="480"></canvas>
+            <canvas id="status-canvas-2" width="800" height="25"></canvas>
+        </div>
+    </body>
+</html>
