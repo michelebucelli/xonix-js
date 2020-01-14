@@ -257,7 +257,6 @@ let Field = function() {
 
       do {
         theta = Math.random() * 2 * Math.PI;
-        console.log(theta);
       } while (Math.abs(theta) < enemy_minimum_steepness ||
                Math.abs(theta - Math.PI / 2) < enemy_minimum_steepness ||
                Math.abs(theta - Math.PI) < enemy_minimum_steepness ||
@@ -443,22 +442,20 @@ let Field = function() {
 
   // Check collisions between enemies and player line.
   this.check_collisions = function() {
-    let player_tile_x = Math.floor(this.player_x);
-    let player_tile_y = Math.floor(this.player_y);
+    let player_left = this.player_x;
+    let player_right = this.player_x + 1;
+    let player_top = this.player_y;
+    let player_bottom = this.player_y + 1;
 
     for (let i = 0; i < this.enemies.length; ++i) {
       let tile_x = Math.floor(this.enemies[i][0]);
       let tile_y = Math.floor(this.enemies[i][1]);
 
-      // Check if enemy hit the player
-      if ((tile_x == player_tile_x &&
-           tile_y == player_tile_y) || // NW of the player
-          (tile_x == player_tile_x + 1 &&
-           tile_y == player_tile_y) || // NE of the player
-          (tile_x == player_tile_x &&
-           tile_y == player_tile_y + 1) || // SW of the player
-          (tile_x == player_tile_x + 1 &&
-           tile_y == player_tile_y + 1)) { // SE of the player
+      // Check if the enemy hit the player.
+      if (!(player_left > this.enemies[i][0] + 1 ||
+            player_right < this.enemies[i][0] ||
+            player_top > this.enemies[i][1] + 1 ||
+            player_bottom < this.enemies[i][1])) {
         this.die();
         return;
       }
@@ -496,15 +493,17 @@ let Field = function() {
     this.player_direction = DIRECTION_IDLE;
 
     this.state = STATE_PLAYING;
+
+    // Regenerate enemies.
+    this.setup_enemies(n_initial_enemies + this.level - 1);
   };
 
   // Move onto next level.
   this.start_new_level = function() {
-    this.setup_field(this.w, this.h);
-    this.setup_enemies(this.enemies.length + 1);
-    this.start_new_life();
-
     this.level++;
+    this.setup_field(this.w, this.h);
+    this.setup_enemies(n_initial_enemies + this.level - 1);
+    this.start_new_life();
   };
 
   // Draw method.
