@@ -30,6 +30,7 @@ const delay_before_new_life = 0.5; // Delay before allowing to restart after
 const STATE_PLAYING = 0;
 const STATE_PAUSE = 1;
 const STATE_GAMEOVER = 2;
+const STATE_INGAME_PAUSE = 3;
 
 // Direction constants.
 const DIRECTION_IDLE = 0;
@@ -171,9 +172,8 @@ let Field = function() {
   this.enemies = 0; // Array of enemies. Each entry is in the format [x, y,
                     // speed_x, speed_y, type].
 
-  this.t = 0;              // Elapsed game time [s].
-  this.game_over_time = 0; // Time when game over was triggered.
-  this.pause_time = 0;     // Time when pause was triggered.
+  this.t = 0;          // Elapsed game time [s].
+  this.pause_time = 0; // Time when pause was triggered.
 
   this.claimed = 0; // Currently claimed fraction.
 
@@ -425,13 +425,12 @@ let Field = function() {
   this.die = function() {
     this.player_lives -= 1;
 
-    if (this.player_lives > 0) {
+    if (this.player_lives > 0)
       this.state = STATE_PAUSE;
-      this.pause_time = Date.now();
-    } else {
+    else
       this.state = STATE_GAMEOVER;
-      this.game_over_time = Date.now();
-    }
+
+    this.pause_time = Date.now();
   };
 
   // Restore playing state after the player has been hit.
@@ -637,7 +636,7 @@ let setup = function() {
         field.player_direction = DIRECTION_E;
         break;
       case "KeyP":
-        field.state = STATE_PAUSE;
+        field.state = STATE_INGAME_PAUSE;
         field.pause_time = Date.now();
         break;
       }
@@ -656,8 +655,13 @@ let setup = function() {
       }
       break;
 
+    case STATE_INGAME_PAUSE:
+      if (Date.now() - field.pause_time > 1000 * delay_before_new_life)
+        field.state = STATE_PLAYING;
+      break;
+
     case STATE_GAMEOVER:
-      if (Date.now() - field.game_over_time > 1000 * delay_before_new_life) {
+      if (Date.now() - field.pause_time > 1000 * delay_before_new_life) {
         field.setup(main_canvas.width / tile_size,
                     main_canvas.height / tile_size);
       }
