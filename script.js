@@ -6,11 +6,12 @@ const border_width =
     2; // Width of the filled border in the initial game field [tiles].
 
 const player_speed = 40; // Player movement speed [tiles/second].
-const enemy_speed = 60;  // Enemy movement speed [tiles/second].
+const enemy_speed = 40;  // Enemy movement speed [tiles/second].
+const enemy_speed_increase_per_level =
+    5; // Enemy speed increase for each level [tiles/speed/level].
 
-const fps = 60; // Frames per second [Hz].
-const n_sub_frames =
-    12; // Sub-frames for updating player and enemies positions.
+const fps = 60;         // Frames per second [Hz].
+const n_sub_frames = 5; // Sub-frames for updating player and enemies positions.
 
 const next_level_claimed =
     0.75; // Fraction of tiles to be claimed to go to the next level.
@@ -237,8 +238,9 @@ let Field = function() {
       } while (this.tiles[y][x] != TILE_UNCLAIMED);
 
       let theta = Math.random() * 2 * Math.PI;
+      let speed = enemy_speed + this.level * enemy_speed_increase_per_level;
       this.enemies[i] = [
-        x, y, enemy_speed * Math.cos(theta), enemy_speed * Math.sin(theta),
+        x, y, speed * Math.cos(theta), speed * Math.sin(theta),
         (i + 1) % one_deleter_every == 0 ? ENEMY_DELETER : ENEMY_NORMAL
       ];
     }
@@ -633,6 +635,10 @@ let setup = function() {
         break;
       case "ArrowRight":
         field.player_direction = DIRECTION_E;
+        break;
+      case "KeyP":
+        field.state = STATE_PAUSE;
+        field.pause_time = Date.now();
         break;
       }
       if (old_direction != field.player_direction) {
