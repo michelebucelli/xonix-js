@@ -20,8 +20,8 @@ const n_initial_enemies = 3;         // Number of enemies in level 1.
 const enemy_deleter_fraction = 0.25; // Fraction of deleter enemies.
 const enemy_claimed_fraction = 0.25; // Fraction of enemies in the claimed area.
 const enemy_minimum_steepness =
-    Math.PI / 8; // Minimum obliqueness of the enemy trajectory, to avoid
-                 // enemies parallel to player.
+    Math.PI / 12; // Minimum obliqueness of the enemy trajectory, to avoid
+                  // enemies parallel to player.
 
 const score_normalization_factor = 5000; // Scaling factor for the score.
 
@@ -452,10 +452,10 @@ let Field = function() {
       let tile_y = Math.floor(this.enemies[i][1]);
 
       // Check if the enemy hit the player.
-      if (!(player_left > this.enemies[i][0] + 1 ||
-            player_right < this.enemies[i][0] ||
-            player_top > this.enemies[i][1] + 1 ||
-            player_bottom < this.enemies[i][1])) {
+      if (!(player_left >= this.enemies[i][0] + 1 ||
+            player_right <= this.enemies[i][0] ||
+            player_top >= this.enemies[i][1] + 1 ||
+            player_bottom <= this.enemies[i][1])) {
         this.die();
         return;
       }
@@ -493,9 +493,6 @@ let Field = function() {
     this.player_direction = DIRECTION_IDLE;
 
     this.state = STATE_PLAYING;
-
-    // Regenerate enemies.
-    this.setup_enemies(n_initial_enemies + this.level - 1);
   };
 
   // Move onto next level.
