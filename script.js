@@ -8,10 +8,11 @@ const border_width =
 const player_speed = 40; // Player movement speed [tiles/second].
 const enemy_speed = 40;  // Enemy movement speed [tiles/second].
 const enemy_speed_increase_per_level =
-    5; // Enemy speed increase for each level [tiles/speed/level].
+    2.5; // Enemy speed increase for each level [tiles/speed/level].
 
-const fps = 60;         // Frames per second [Hz].
-const n_sub_frames = 5; // Sub-frames for updating player and enemies positions.
+const fps = 60; // Frames per second [Hz].
+const n_sub_frames =
+    10; // Sub-frames for updating player and enemies positions.
 
 const next_level_claimed =
     0.75; // Fraction of tiles to be claimed to go to the next level.
@@ -276,10 +277,6 @@ let Field = function() {
       let old_tile_y = Math.floor(this.player_y);
 
       this.update_player(t);
-      this.update_enemies(t);
-
-      // Check collisions between enemies and player.
-      this.check_collisions();
 
       // Get new tile coordinates.
       let new_tile_x = Math.floor(this.player_x);
@@ -303,6 +300,11 @@ let Field = function() {
         if (this.tiles[new_tile_y][new_tile_x] == TILE_LINE)
           this.die();
       }
+
+      this.update_enemies(t);
+
+      // Check collisions between enemies and player.
+      this.check_collisions();
     }
   };
 
@@ -342,6 +344,8 @@ let Field = function() {
   this.update_enemies = function(t) {
     for (let i = 0; i < this.enemies.length; ++i) {
       // Obstacle tile type.
+      let tile_walkable =
+          this.enemies[i][4] == ENEMY_CLAIMED ? TILE_CLAIMED : TILE_UNCLAIMED;
       let tile_obstacle =
           this.enemies[i][4] == ENEMY_CLAIMED ? TILE_UNCLAIMED : TILE_CLAIMED;
 
@@ -367,10 +371,10 @@ let Field = function() {
                         : tile_obstacle;
 
       // Hit flags.
-      let hit_nw = tile_nw == tile_obstacle;
-      let hit_ne = tile_ne == tile_obstacle;
-      let hit_sw = tile_sw == tile_obstacle;
-      let hit_se = tile_se == tile_obstacle;
+      let hit_nw = tile_nw != tile_walkable;
+      let hit_ne = tile_ne != tile_walkable;
+      let hit_sw = tile_sw != tile_walkable;
+      let hit_se = tile_se != tile_walkable;
 
       // Penetration lengths.
       let dn = Math.ceil(this.enemies[i][1]) - tile_y;
@@ -395,22 +399,22 @@ let Field = function() {
         this.enemies[i][2] *= -1;
         this.enemies[i][0] = Math.floor(this.enemies[i][0]);
       } else if (d_max == dn &&
-                 (tile_nw == tile_obstacle || tile_ne == tile_obstacle) &&
+                 (tile_nw != tile_walkable || tile_ne != tile_walkable) &&
                  this.enemies[i][3] < 0) {
         this.enemies[i][3] *= -1;
         this.enemies[i][1] = Math.ceil(this.enemies[i][0]);
       } else if (d_max == dw &&
-                 (tile_nw == tile_obstacle || tile_sw == tile_obstacle) &&
+                 (tile_nw != tile_walkable || tile_sw != tile_walkable) &&
                  this.enemies[i][2] < 0) {
         this.enemies[i][2] *= -1;
         this.enemies[i][0] = Math.ceil(this.enemies[i][0]);
       } else if (d_max == ds &&
-                 (tile_sw == tile_obstacle || tile_se == tile_obstacle) &&
+                 (tile_sw != tile_walkable || tile_se != tile_walkable) &&
                  this.enemies[i][3] > 0) {
         this.enemies[i][3] *= -1;
         this.enemies[i][1] = Math.floor(this.enemies[i][1]);
       } else if (d_max == de &&
-                 (tile_ne == tile_obstacle || tile_se == tile_obstacle) &&
+                 (tile_ne != tile_walkable || tile_se != tile_walkable) &&
                  this.enemies[i][2] > 0) {
         this.enemies[i][2] *= -1;
         this.enemies[i][0] = Math.floor(this.enemies[i][0]);
@@ -468,6 +472,7 @@ let Field = function() {
     }
   };
 
+  // Player death.
   this.die = function() {
     this.player_lives -= 1;
 
@@ -479,6 +484,33 @@ let Field = function() {
     this.pause_time = Date.now();
   };
 
+  // Respawn the enemies bouncing in the claimed area.
+  this.respawn_enemies_claimed = function() {
+    for (let i = 0; i < this.enemies.length; ++i) {
+      if (this.enemies[i][4] != ENEMY_CLAIMED)
+        continue;
+
+      let x, y, theta;
+
+      do {
+        x = Math.floor(Math.random() * this.w);
+        y = Math.floor(Math.random() * this.h);
+      } while (this.tiles[y][x] != TILE_CLAIMED);
+
+      do {
+        theta = Math.random() * 2 * Math.PI;
+      } while (Math.abs(theta) < enemy_minimum_steepness ||
+               Math.abs(theta - Math.PI / 2) < enemy_minimum_steepness ||
+               Math.abs(theta - Math.PI) < enemy_minimum_steepness ||
+               Math.abs(theta - 3 * Math.PI / 2) < enemy_minimum_steepness ||
+               Math.abs(theta - 2 * Math.PI) < enemy_minimum_steepness);
+      let speed = enemy_speed + this.level * enemy_speed_increase_per_level;
+      this.enemies[i] = [
+        x, y, speed * Math.cos(theta), speed * Math.sin(theta), ENEMY_CLAIMED
+      ];
+    }
+  };
+
   // Restore playing state after the player has been hit.
   this.start_new_life = function() {
     // Clear the line.
@@ -486,6 +518,8 @@ let Field = function() {
       for (let col = 0; col < this.w; ++col)
         if (this.tiles[row][col] == TILE_LINE)
           this.tiles[row][col] = TILE_UNCLAIMED;
+
+    this.respawn_enemies_claimed();
 
     // Reset player position.
     this.player_x = Math.floor(this.w / 2);
@@ -584,8 +618,9 @@ let Field = function() {
 
     // Place seeds in correspondence of enemies.
     for (let i = 0; i < this.enemies.length; ++i)
-      this.tiles_to_claim[Math.floor(this.enemies[i][1])][Math.floor(
-          this.enemies[i][0])] = false;
+      if (this.enemies[i][4] != ENEMY_CLAIMED)
+        this.tiles_to_claim[Math.floor(this.enemies[i][1])][Math.floor(
+            this.enemies[i][0])] = false;
 
     // Bucket-fill.
     let changed = true;
