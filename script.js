@@ -20,6 +20,9 @@ const one_deleter_every = 4; // One deleter every x enemies.
 
 const score_normalization_factor = 5000; // Scaling factor for the score.
 
+const delay_before_new_life = 0.5; // Delay before allowing to restart after
+                                   // losing one life or clearing the level [s].
+
 // ENUMERATIONS ////////////////////////////////////////////////////////////////
 
 // Game state constants.
@@ -167,7 +170,9 @@ let Field = function() {
   this.enemies = 0; // Array of enemies. Each entry is in the format [x, y,
                     // speed_x, speed_y, type].
 
-  this.t = 0; // Elapsed game time [s].
+  this.t = 0;              // Elapsed game time [s].
+  this.game_over_time = 0; // Time when game over was triggered.
+  this.pause_time = 0;     // Time when pause was triggered.
 
   this.claimed = 0; // Currently claimed fraction.
 
@@ -418,10 +423,13 @@ let Field = function() {
   this.die = function() {
     this.player_lives -= 1;
 
-    if (this.player_lives > 0)
+    if (this.player_lives > 0) {
       this.state = STATE_PAUSE;
-    else
+      this.pause_time = Date.now();
+    } else {
       this.state = STATE_GAMEOVER;
+      this.game_over_time = Date.now();
+    }
   };
 
   // Restore playing state after the player has been hit.
@@ -567,8 +575,10 @@ let Field = function() {
         Math.ceil(claimed_new * claimed_new / score_normalization_factor);
     localStorage.hiscore = Math.max(this.player_score, localStorage.hiscore);
 
-    if (this.claimed / (this.w * this.h) > next_level_claimed)
+    if (this.claimed / (this.w * this.h) > next_level_claimed) {
       this.state = STATE_PAUSE;
+      this.pause_time = Date.now();
+    }
   }
 };
 
@@ -632,15 +642,19 @@ let setup = function() {
       break;
 
     case STATE_PAUSE:
-      if (field.claimed / (field.w * field.h) > next_level_claimed)
-        field.start_new_level();
-      else
-        field.start_new_life();
+      if (Date.now() - field.pause_time > 1000 * delay_before_new_life) {
+        if (field.claimed / (field.w * field.h) > next_level_claimed)
+          field.start_new_level();
+        else
+          field.start_new_life();
+      }
       break;
 
     case STATE_GAMEOVER:
-      field.setup(main_canvas.width / tile_size,
-                  main_canvas.height / tile_size);
+      if (Date.now() - field.game_over_time > 1000 * delay_before_new_life) {
+        field.setup(main_canvas.width / tile_size,
+                    main_canvas.height / tile_size);
+      }
       break;
     }
   };
