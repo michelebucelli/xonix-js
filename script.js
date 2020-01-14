@@ -3,7 +3,7 @@
 const tile_size = 5; // Tile size [px].
 
 const border_width =
-    2; // Width of the filled border in the initial game field [tiles].
+    3; // Width of the filled border in the initial game field [tiles].
 
 const player_speed = 40; // Player movement speed [tiles/second].
 const enemy_speed = 40;  // Enemy movement speed [tiles/second].
@@ -16,8 +16,12 @@ const n_sub_frames = 5; // Sub-frames for updating player and enemies positions.
 const next_level_claimed =
     0.75; // Fraction of tiles to be claimed to go to the next level.
 
-const n_initial_enemies = 3; // Number of enemies in level 1.
-const one_deleter_every = 4; // One deleter every x enemies.
+const n_initial_enemies = 3;         // Number of enemies in level 1.
+const enemy_deleter_fraction = 0.25; // Fraction of deleter enemies.
+const enemy_claimed_fraction = 0.25; // Fraction of enemies in the claimed area.
+const enemy_minimum_steepness =
+    Math.PI / 8; // Minimum obliqueness of the enemy trajectory, to avoid
+                 // enemies parallel to player.
 
 const score_normalization_factor = 5000; // Scaling factor for the score.
 
@@ -27,10 +31,11 @@ const delay_before_new_life = 0.5; // Delay before allowing to restart after
 // ENUMERATIONS ////////////////////////////////////////////////////////////////
 
 // Game state constants.
-const STATE_PLAYING = 0;
-const STATE_PAUSE = 1;
-const STATE_GAMEOVER = 2;
-const STATE_INGAME_PAUSE = 3;
+const STATE_PLAYING = 0; // Game is running.
+const STATE_PAUSE = 1; // Game has been paused by the death of the player or the
+                       // clearing of the level.
+const STATE_GAMEOVER = 2;     // Game has ended.
+const STATE_INGAME_PAUSE = 3; // The game was manually paused.
 
 // Direction constants.
 const DIRECTION_IDLE = 0;
@@ -45,8 +50,10 @@ const TILE_UNCLAIMED = 1;
 const TILE_LINE = 2;
 
 // Enemy types.
-const ENEMY_NORMAL = 0;
-const ENEMY_DELETER = 1;
+const ENEMY_NORMAL = 0; // Normal "red" enemies, bouncing in the unclaimed area.
+const ENEMY_DELETER = 1; // Deleter "green" enemy, bouncing in the unclaimed
+                         // area and unclaiming the claimed tiles it hits.
+const ENEMY_CLAIMED = 2; // Enemy bouncing in the claimed area.
 
 // GRAPHICAL PARAMETERS ////////////////////////////////////////////////////////
 
@@ -55,6 +62,7 @@ const color_unclaimed = "#000000"; // Color for unclaimed regions.
 const color_line = "#808080";      // Color for player line while being drawn.
 const color_enemy_normal = "#FF0000";  // Color for normal enemies.
 const color_enemy_deleter = "#00FF00"; // Color for deleters.
+const color_enemy_claimed = "#0000FF"; // Color for enemies in the claimed area.
 
 // BITMAP FONT /////////////////////////////////////////////////////////////////
 
@@ -229,20 +237,35 @@ let Field = function() {
     // First remove all existing enemies, if any.
     this.enemies = new Array(n_enemies);
 
+    // Compute amount of enemies of each type.
+    let n_deleters = Math.floor(n_enemies * enemy_deleter_fraction);
+    let n_claimed = Math.floor(n_enemies * enemy_claimed_fraction);
+    let n_normal = n_enemies - n_deleters - n_claimed;
+
     // Generate the new enemies in random positions and with random speed.
     for (let i = 0; i < n_enemies; ++i) {
-      let x, y;
+      let type = i < n_deleters ? ENEMY_DELETER
+                                : (i < (n_deleters + n_claimed) ? ENEMY_CLAIMED
+                                                                : ENEMY_NORMAL);
+      let x, y, theta;
+
       do {
         x = Math.floor(Math.random() * this.w);
         y = Math.floor(Math.random() * this.h);
-      } while (this.tiles[y][x] != TILE_UNCLAIMED);
+      } while ((type == ENEMY_CLAIMED && this.tiles[y][x] != TILE_CLAIMED) ||
+               (type != ENEMY_CLAIMED && this.tiles[y][x] != TILE_UNCLAIMED));
 
-      let theta = Math.random() * 2 * Math.PI;
+      do {
+        theta = Math.random() * 2 * Math.PI;
+        console.log(theta);
+      } while (Math.abs(theta) < enemy_minimum_steepness ||
+               Math.abs(theta - Math.PI / 2) < enemy_minimum_steepness ||
+               Math.abs(theta - Math.PI) < enemy_minimum_steepness ||
+               Math.abs(theta - 3 * Math.PI / 2) < enemy_minimum_steepness ||
+               Math.abs(theta - 2 * Math.PI) < enemy_minimum_steepness);
       let speed = enemy_speed + this.level * enemy_speed_increase_per_level;
-      this.enemies[i] = [
-        x, y, speed * Math.cos(theta), speed * Math.sin(theta),
-        (i + 1) % one_deleter_every == 0 ? ENEMY_DELETER : ENEMY_NORMAL
-      ];
+      this.enemies[i] =
+          [ x, y, speed * Math.cos(theta), speed * Math.sin(theta), type ];
     }
   };
 
@@ -319,6 +342,10 @@ let Field = function() {
   // Update the enemies' positions.
   this.update_enemies = function(t) {
     for (let i = 0; i < this.enemies.length; ++i) {
+      // Obstacle tile type.
+      let tile_obstacle =
+          this.enemies[i][4] == ENEMY_CLAIMED ? TILE_UNCLAIMED : TILE_CLAIMED;
+
       // Move the enemy.
       this.enemies[i][0] += this.enemies[i][2] * t;
       this.enemies[i][1] += this.enemies[i][3] * t;
@@ -328,20 +355,23 @@ let Field = function() {
       let tile_y = Math.floor(this.enemies[i][1]);
 
       // Surrounding tiles.
-      let tile_nw = this.tiles[tile_y][tile_x];
-      let tile_ne =
-          tile_x < this.w - 1 ? this.tiles[tile_y][tile_x + 1] : TILE_CLAIMED;
-      let tile_sw =
-          tile_y < this.h - 1 ? this.tiles[tile_y + 1][tile_x] : TILE_CLAIMED;
+      let tile_nw = tile_x >= 0 && tile_y >= 0 ? this.tiles[tile_y][tile_x]
+                                               : tile_obstacle;
+      let tile_ne = tile_x < this.w - 1 && tile_y >= 0
+                        ? this.tiles[tile_y][tile_x + 1]
+                        : tile_obstacle;
+      let tile_sw = tile_x >= 0 && tile_y < this.h - 1
+                        ? this.tiles[tile_y + 1][tile_x]
+                        : tile_obstacle;
       let tile_se = tile_x < this.w - 1 && tile_y < this.h - 1
                         ? this.tiles[tile_y + 1][tile_x + 1]
-                        : TILE_CLAIMED;
+                        : tile_obstacle;
 
       // Hit flags.
-      let hit_nw = tile_nw == TILE_CLAIMED;
-      let hit_ne = tile_ne == TILE_CLAIMED;
-      let hit_sw = tile_sw == TILE_CLAIMED;
-      let hit_se = tile_se == TILE_CLAIMED;
+      let hit_nw = tile_nw == tile_obstacle;
+      let hit_ne = tile_ne == tile_obstacle;
+      let hit_sw = tile_sw == tile_obstacle;
+      let hit_se = tile_se == tile_obstacle;
 
       // Penetration lengths.
       let dn = Math.ceil(this.enemies[i][1]) - tile_y;
@@ -366,22 +396,22 @@ let Field = function() {
         this.enemies[i][2] *= -1;
         this.enemies[i][0] = Math.floor(this.enemies[i][0]);
       } else if (d_max == dn &&
-                 (tile_nw == TILE_CLAIMED || tile_ne == TILE_CLAIMED) &&
+                 (tile_nw == tile_obstacle || tile_ne == tile_obstacle) &&
                  this.enemies[i][3] < 0) {
         this.enemies[i][3] *= -1;
         this.enemies[i][1] = Math.ceil(this.enemies[i][0]);
       } else if (d_max == dw &&
-                 (tile_nw == TILE_CLAIMED || tile_sw == TILE_CLAIMED) &&
+                 (tile_nw == tile_obstacle || tile_sw == tile_obstacle) &&
                  this.enemies[i][2] < 0) {
         this.enemies[i][2] *= -1;
         this.enemies[i][0] = Math.ceil(this.enemies[i][0]);
       } else if (d_max == ds &&
-                 (tile_sw == TILE_CLAIMED || tile_se == TILE_CLAIMED) &&
+                 (tile_sw == tile_obstacle || tile_se == tile_obstacle) &&
                  this.enemies[i][3] > 0) {
         this.enemies[i][3] *= -1;
         this.enemies[i][1] = Math.floor(this.enemies[i][1]);
       } else if (d_max == de &&
-                 (tile_ne == TILE_CLAIMED || tile_se == TILE_CLAIMED) &&
+                 (tile_ne == tile_obstacle || tile_se == tile_obstacle) &&
                  this.enemies[i][2] > 0) {
         this.enemies[i][2] *= -1;
         this.enemies[i][0] = Math.floor(this.enemies[i][0]);
@@ -413,12 +443,31 @@ let Field = function() {
 
   // Check collisions between enemies and player line.
   this.check_collisions = function() {
+    let player_tile_x = Math.floor(this.player_x);
+    let player_tile_y = Math.floor(this.player_y);
+
     for (let i = 0; i < this.enemies.length; ++i) {
       let tile_x = Math.floor(this.enemies[i][0]);
       let tile_y = Math.floor(this.enemies[i][1]);
 
-      if (this.tiles[tile_y][tile_x] == TILE_LINE)
+      // Check if enemy hit the player
+      if ((tile_x == player_tile_x &&
+           tile_y == player_tile_y) || // NW of the player
+          (tile_x == player_tile_x + 1 &&
+           tile_y == player_tile_y) || // NE of the player
+          (tile_x == player_tile_x &&
+           tile_y == player_tile_y + 1) || // SW of the player
+          (tile_x == player_tile_x + 1 &&
+           tile_y == player_tile_y + 1)) { // SE of the player
         this.die();
+        return;
+      }
+
+      // Check if enemy hit the line.
+      if (this.tiles[tile_y][tile_x] == TILE_LINE) {
+        this.die();
+        return;
+      }
     }
   };
 
@@ -498,9 +547,18 @@ let Field = function() {
 
     // Draw the enemies.
     for (let i = 0; i < this.enemies.length; ++i) {
-      context.fillStyle = this.enemies[i][4] == ENEMY_NORMAL
-                              ? color_enemy_normal
-                              : color_enemy_deleter;
+      switch (this.enemies[i][4]) {
+      case ENEMY_NORMAL:
+        context.fillStyle = color_enemy_normal;
+        break;
+      case ENEMY_DELETER:
+        context.fillStyle = color_enemy_deleter;
+        break;
+      case ENEMY_CLAIMED:
+        context.fillStyle = color_enemy_claimed;
+        break;
+      }
+
       context.fillRect(Math.floor(this.enemies[i][0] * tile_size),
                        Math.floor(this.enemies[i][1] * tile_size), tile_size,
                        tile_size);
