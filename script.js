@@ -441,6 +441,16 @@ let Field = function() {
           this.claimed--;
         }
       }
+
+      else if (this.enemies[i][4] == ENEMY_NORMAL) {
+        if ((hit_nw && tile_nw == TILE_LINE) ||
+            (hit_ne && tile_ne == TILE_LINE) ||
+            (hit_sw && tile_sw == TILE_LINE) ||
+            (hit_se && tile_se == TILE_LINE)) {
+          this.die();
+          break;
+        }
+      }
     }
   };
 
