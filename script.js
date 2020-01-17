@@ -72,7 +72,7 @@ const color_enemy_claimed = "#0000FF"; // Color for enemies in the claimed area.
 
 const bitfont_alphabet = [
   "|", "%", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", " ",
-  "a", "c", "e", "g", "h", "i", "l", "m", "o", "r", "s", "v"
+  "a", "c", "e", "g", "h", "i", "l", "m", "o", "r", "s", "t", "v"
 ];
 const bitfont_characters = [
   [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ], // |
@@ -99,10 +99,12 @@ const bitfont_characters = [
   [ 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1 ], // o
   [ 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1 ], // r
   [ 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1 ], // s
+  [ 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 ], // t
   [ 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0 ]  // v
 ];
 const bitfont_kerning = [
-  0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0
 ];
 
 let BitmapFont = function(alphabet, characters, kerning, w, h, pixel_size) {
@@ -311,6 +313,8 @@ let Field = function() {
 
       // Check collisions between enemies and player.
       this.check_collisions();
+
+      this.t += t;
     }
   };
 
@@ -678,8 +682,8 @@ let Field = function() {
     }
 
     // Update score.
-    this.player_score +=
-        Math.ceil(claimed_new * claimed_new / score_normalization_factor);
+    this.player_score += Math.ceil(claimed_new * claimed_new /
+                                   score_normalization_factor / this.t);
     localStorage.hiscore = Math.max(this.player_score, localStorage.hiscore);
 
     if (this.claimed / (this.w * this.h) > next_level_claimed) {
@@ -826,8 +830,14 @@ let draw = function() {
   let level_str = "level " + field.level.toString();
   let hiscore_str = "hiscore " + localStorage.hiscore.toString();
   let hiscore_str_w = bitfont.string_width(hiscore_str);
+  let time_str = "time " + Math.floor(field.t).toString();
+  let time_str_w = bitfont.string_width(time_str);
 
   bitfont.render_string(status_context_2, 0, 0, level_str, color_claimed);
   bitfont.render_string(status_context_2, status_canvas_2.width - hiscore_str_w,
                         0, hiscore_str, color_claimed);
+  bitfont.render_string(status_context_2,
+                        Math.floor((status_canvas_2.width - time_str_w) / 2) -
+                            70,
+                        0, time_str, color_claimed);
 };
