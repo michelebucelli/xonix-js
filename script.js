@@ -553,6 +553,7 @@ let Field = function() {
   // Move onto next level.
   this.start_new_level = function() {
     this.level++;
+    this.t = 0;
     this.setup_field(this.w, this.h);
     this.setup_enemies(n_initial_enemies + this.level - 1);
     this.start_new_life();
