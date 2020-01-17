@@ -472,7 +472,8 @@ let Field = function() {
       let tile_y = Math.floor(this.enemies[i][1]);
 
       // Check if the enemy hit the player.
-      if (!(player_left >= this.enemies[i][0] + 1 ||
+      if (this.enemies[i][4] != ENEMY_DELETER &&
+          !(player_left >= this.enemies[i][0] + 1 ||
             player_right <= this.enemies[i][0] ||
             player_top >= this.enemies[i][1] + 1 ||
             player_bottom <= this.enemies[i][1])) {
