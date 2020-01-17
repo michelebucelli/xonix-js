@@ -258,11 +258,12 @@ let Field = function() {
       do {
         x = Math.floor(Math.random() * this.w);
         y = Math.floor(Math.random() * this.h);
-      } while ((type == ENEMY_CLAIMED && this.tiles[y][x] != TILE_CLAIMED &&
-                (x - this.player_x) * (x - this.player_x) +
-                        (y - this.player_y) * (y - this.player_y) >
-                    min_claimed_distance_from_player *
-                        min_claimed_distance_from_player) ||
+      } while ((type == ENEMY_CLAIMED &&
+                (this.tiles[y][x] != TILE_CLAIMED ||
+                 (x - this.player_x) * (x - this.player_x) +
+                         (y - this.player_y) * (y - this.player_y) >
+                     min_claimed_distance_from_player *
+                         min_claimed_distance_from_player)) ||
                (type != ENEMY_CLAIMED && this.tiles[y][x] != TILE_UNCLAIMED));
 
       do {
