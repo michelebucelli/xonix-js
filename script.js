@@ -24,6 +24,9 @@ const enemy_minimum_steepness =
     Math.PI / 12; // Minimum obliqueness of the enemy trajectory, to avoid
                   // enemies parallel to player.
 
+const min_claimed_distance_from_player =
+    30; // Minimum spawn distance of a claimed enemy to the player.
+
 const score_normalization_factor = 5000; // Scaling factor for the score.
 
 const delay_before_new_life = 0.5; // Delay before allowing to restart after
@@ -253,7 +256,10 @@ let Field = function() {
       do {
         x = Math.floor(Math.random() * this.w);
         y = Math.floor(Math.random() * this.h);
-      } while ((type == ENEMY_CLAIMED && this.tiles[y][x] != TILE_CLAIMED) ||
+      } while ((type == ENEMY_CLAIMED && this.tiles[y][x] != TILE_CLAIMED &&
+                (x - this.player_x) * (x - this.player_x) +
+                        (y - this.player_y) * (y - this.player_y) >
+                    min_claimed_distance_from_player) ||
                (type != ENEMY_CLAIMED && this.tiles[y][x] != TILE_UNCLAIMED));
 
       do {
