@@ -27,7 +27,7 @@ const enemy_minimum_steepness =
 const min_claimed_distance_from_player =
     30; // Minimum spawn distance of a claimed enemy to the player.
 
-const score_normalization_factor = 5000; // Scaling factor for the score.
+const score_normalization_factor = 1000; // Scaling factor for the score.
 
 const delay_before_new_life = 0.5; // Delay before allowing to restart after
                                    // losing one life or clearing the level [s].
@@ -261,7 +261,7 @@ let Field = function() {
       } while ((type == ENEMY_CLAIMED &&
                 (this.tiles[y][x] != TILE_CLAIMED ||
                  (x - this.player_x) * (x - this.player_x) +
-                         (y - this.player_y) * (y - this.player_y) >
+                         (y - this.player_y) * (y - this.player_y) <
                      min_claimed_distance_from_player *
                          min_claimed_distance_from_player)) ||
                (type != ENEMY_CLAIMED && this.tiles[y][x] != TILE_UNCLAIMED));
@@ -518,7 +518,11 @@ let Field = function() {
       do {
         x = Math.floor(Math.random() * this.w);
         y = Math.floor(Math.random() * this.h);
-      } while (this.tiles[y][x] != TILE_CLAIMED);
+      } while (this.tiles[y][x] != TILE_CLAIMED ||
+               (x - this.player_x) * (x - this.player_x) +
+                       (y - this.player_y) * (y - this.player_y) <
+                   min_claimed_distance_from_player *
+                       min_claimed_distance_from_player);
 
       do {
         theta = Math.random() * 2 * Math.PI;
@@ -557,6 +561,11 @@ let Field = function() {
     this.level++;
     this.t = 0;
     this.setup_field(this.w, this.h);
+
+    this.player_x = Math.floor(this.w / 2);
+    this.player_y = 0;
+    this.player_direction = DIRECTION_IDLE;
+
     this.setup_enemies(n_initial_enemies + this.level - 1);
     this.start_new_life();
   };
@@ -686,7 +695,8 @@ let Field = function() {
 
     // Update score.
     this.player_score += Math.ceil(claimed_new * claimed_new /
-                                   score_normalization_factor / this.t);
+                                   score_normalization_factor / this.t) *
+                         Math.pow(2, this.level - 1);
     localStorage.hiscore = Math.max(this.player_score, localStorage.hiscore);
 
     if (this.claimed / (this.w * this.h) > next_level_claimed) {
