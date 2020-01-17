@@ -246,10 +246,10 @@ let Field = function() {
     // Compute amount of enemies of each type.
     let n_deleters = Math.floor(n_enemies * enemy_deleter_fraction);
     let n_claimed = Math.floor(n_enemies * enemy_claimed_fraction);
-    let n_normal = n_enemies - n_deleters - n_claimed;
+    let n_normal = n_enemies;
 
     // Generate the new enemies in random positions and with random speed.
-    for (let i = 0; i < n_enemies; ++i) {
+    for (let i = 0; i < n_normal + n_deleters + n_claimed; ++i) {
       let type = i < n_deleters ? ENEMY_DELETER
                                 : (i < (n_deleters + n_claimed) ? ENEMY_CLAIMED
                                                                 : ENEMY_NORMAL);
@@ -261,7 +261,8 @@ let Field = function() {
       } while ((type == ENEMY_CLAIMED && this.tiles[y][x] != TILE_CLAIMED &&
                 (x - this.player_x) * (x - this.player_x) +
                         (y - this.player_y) * (y - this.player_y) >
-                    min_claimed_distance_from_player) ||
+                    min_claimed_distance_from_player *
+                        min_claimed_distance_from_player) ||
                (type != ENEMY_CLAIMED && this.tiles[y][x] != TILE_UNCLAIMED));
 
       do {
