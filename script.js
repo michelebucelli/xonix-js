@@ -28,7 +28,7 @@ const enemy_minimum_steepness =
 const min_claimed_distance_from_player =
     30; // Minimum spawn distance of a claimed enemy to the player.
 
-const score_normalization_factor = 2000; // Scaling factor for the score.
+const score_normalization_factor = 1000; // Scaling factor for the score.
 
 const delay_before_new_life = 0.5; // Delay before allowing to restart after
                                    // losing one life or clearing the level [s].
@@ -696,9 +696,10 @@ let Field = function() {
     }
 
     // Update score.
-    this.player_score += Math.ceil(claimed_new * claimed_new /
-                                   score_normalization_factor / this.t) *
-                         Math.pow(2, this.level - 1);
+    this.player_score +=
+        Math.ceil(Math.pow(claimed_new, 1.5) / score_normalization_factor /
+                  Math.pow(this.t, 0.5)) *
+        Math.pow(2, this.level - 1);
     localStorage.hiscore_ = Math.max(this.player_score, localStorage.hiscore_);
 
     if (this.claimed / (this.w * this.h) > next_level_claimed) {
