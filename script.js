@@ -8,7 +8,7 @@ const border_width =
 const player_speed = 40; // Player movement speed [tiles/second].
 const enemy_speed = 40;  // Enemy movement speed [tiles/second].
 const enemy_speed_increase_per_level =
-    2.5; // Enemy speed increase for each level [tiles/speed/level].
+    1; // Enemy speed increase for each level [tiles/speed/level].
 
 const fps = 60; // Frames per second [Hz].
 const n_sub_frames =
@@ -18,6 +18,7 @@ const next_level_claimed =
     0.75; // Fraction of tiles to be claimed to go to the next level.
 
 const n_initial_enemies = 3;         // Number of enemies in level 1.
+const n_enemies_per_level = 1;       // Number of extra enemies every level.
 const enemy_deleter_fraction = 0.25; // Fraction of deleter enemies.
 const enemy_claimed_fraction = 0.25; // Fraction of enemies in the claimed area.
 const enemy_minimum_steepness =
@@ -27,7 +28,7 @@ const enemy_minimum_steepness =
 const min_claimed_distance_from_player =
     30; // Minimum spawn distance of a claimed enemy to the player.
 
-const score_normalization_factor = 1000; // Scaling factor for the score.
+const score_normalization_factor = 2000; // Scaling factor for the score.
 
 const delay_before_new_life = 0.5; // Delay before allowing to restart after
                                    // losing one life or clearing the level [s].
@@ -246,7 +247,7 @@ let Field = function() {
     // Compute amount of enemies of each type.
     let n_deleters = Math.floor(n_enemies * enemy_deleter_fraction);
     let n_claimed = Math.floor(n_enemies * enemy_claimed_fraction);
-    let n_normal = n_enemies;
+    let n_normal = n_enemies - n_deleters;
 
     // Generate the new enemies in random positions and with random speed.
     for (let i = 0; i < n_normal + n_deleters + n_claimed; ++i) {
@@ -566,7 +567,8 @@ let Field = function() {
     this.player_y = 0;
     this.player_direction = DIRECTION_IDLE;
 
-    this.setup_enemies(n_initial_enemies + this.level - 1);
+    this.setup_enemies(n_initial_enemies +
+                       (this.level - 1) * n_enemies_per_level);
     this.start_new_life();
   };
 
@@ -697,7 +699,7 @@ let Field = function() {
     this.player_score += Math.ceil(claimed_new * claimed_new /
                                    score_normalization_factor / this.t) *
                          Math.pow(2, this.level - 1);
-    localStorage.hiscore = Math.max(this.player_score, localStorage.hiscore);
+    localStorage.hiscore_ = Math.max(this.player_score, localStorage.hiscore_);
 
     if (this.claimed / (this.w * this.h) > next_level_claimed) {
       this.state = STATE_PAUSE;
@@ -725,8 +727,8 @@ let bitfont = new BitmapFont(bitfont_alphabet, bitfont_characters,
 // Setup method.
 let setup = function() {
   // Reset hiscore if not found.
-  if (localStorage.hiscore == undefined)
-    localStorage.hiscore = 0;
+  if (localStorage.hiscore_ == undefined)
+    localStorage.hiscore_ = 0;
 
   // Retrieve canvas elements.
   main_canvas = document.getElementById("main-canvas");
@@ -841,7 +843,7 @@ let draw = function() {
 
   // Draw status 2
   let level_str = "level " + field.level.toString();
-  let hiscore_str = "hiscore " + localStorage.hiscore.toString();
+  let hiscore_str = "hiscore " + localStorage.hiscore_.toString();
   let hiscore_str_w = bitfont.string_width(hiscore_str);
   let time_str = "time " + Math.floor(field.t).toString();
   let time_str_w = bitfont.string_width(time_str);
